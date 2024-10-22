@@ -1,18 +1,18 @@
 import { useEffect, useRef } from "react";
 import { VoiceControl } from "./voiceControl";
 
-export const CANVAS_WIDTH = 800;
-export const CANVAS_HEIGHT = 600;
-const PADDLE_WIDTH = 200;
-const PADDLE_HEIGHT = 10;
-const BALL_RADIUS = 10;
+export const CANVAS_WIDTH = 300;
+export const CANVAS_HEIGHT = 300;
+const PADDLE_WIDTH = CANVAS_WIDTH / 4;
+const PADDLE_HEIGHT = CANVAS_HEIGHT / 60;
+const BALL_RADIUS = PADDLE_HEIGHT;
 const BRICK_ROWS = 5;
 const BRICK_COLUMNS = 8;
-const BRICK_WIDTH = 80;
-const BRICK_HEIGHT = 20;
-const BRICK_PADDING = 10;
-const BRICK_OFFSET_TOP = 30;
-const BRICK_OFFSET_LEFT = 30;
+const BRICK_WIDTH = CANVAS_WIDTH / 10;
+const BRICK_HEIGHT = CANVAS_HEIGHT / 30;
+const BRICK_PADDING = PADDLE_HEIGHT;
+const BRICK_OFFSET_TOP = BRICK_PADDING;
+const BRICK_OFFSET_LEFT = CANVAS_WIDTH - BRICK_COLUMNS * (BRICK_WIDTH + BRICK_PADDING);
 
 export function Arkanoid({
   minFreq,
@@ -35,8 +35,8 @@ export function Arkanoid({
   const ball = useRef({
     x: CANVAS_WIDTH / 2,
     y: CANVAS_HEIGHT - 30,
-    dx: 1.5,
-    dy: -2,
+    dx: PADDLE_HEIGHT / 6,
+    dy: PADDLE_HEIGHT / -5,
   });
 
   const generateBricks = () => {
