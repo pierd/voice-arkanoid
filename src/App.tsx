@@ -32,13 +32,15 @@ function App() {
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 p-4">
-      <h1 className="text-3xl font-bold mb-4">Voice-Controlled Arkanoid</h1>
+      <h1 className="text-3xl font-bold mb-4">
+        Voice pitch controlled Arkanoid
+      </h1>
       <div
         className="mb-4 bg-blue-100 border-l-4 border-blue-500 text-blue-700 p-4"
         role="alert"
       >
         <p>
-          Use your voice (whistle) to control the paddle. Frequency sets the
+          Use your voice (whistle) to control the paddle. Pitch sets the
           position.
         </p>
         <button
