@@ -1,6 +1,10 @@
 import { useState, useEffect, useRef } from "react";
 import { VoiceControl } from "./voiceControl";
-import { Calibration, CalibrationResult, isCalibrationResultComplete } from "./Calibration";
+import {
+  Calibration,
+  CalibrationResult,
+  isCalibrationResultComplete,
+} from "./Calibration";
 import { Arkanoid } from "./Arkanoid";
 
 type Mode = "welcome" | "game" | "calibrating" | "game-over";
@@ -33,9 +37,23 @@ function App() {
         className="mb-4 bg-blue-100 border-l-4 border-blue-500 text-blue-700 p-4"
         role="alert"
       >
-        <p>Use your voice (whistle) to control the paddle. Frequency sets the position.</p>
-        <button disabled={!voiceControl.current} onClick={() => setMode("calibrating")}>Calibrate</button>
-        <button disabled={!calibrationResult} onClick={() => setMode("game")}>
+        <p>
+          Use your voice (whistle) to control the paddle. Frequency sets the
+          position.
+        </p>
+        <button
+          disabled={!voiceControl.current}
+          onClick={() => setMode("calibrating")}
+        >
+          Calibrate
+        </button>
+        <button
+          disabled={
+            !voiceControl.current ||
+            !isCalibrationResultComplete(calibrationResult)
+          }
+          onClick={() => setMode("game")}
+        >
           Start Game
         </button>
       </div>
