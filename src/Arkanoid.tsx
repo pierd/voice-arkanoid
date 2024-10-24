@@ -94,7 +94,8 @@ export function Arkanoid({
       if (
         newY + BALL_RADIUS > paddle.current.y &&
         newX > paddle.current.x &&
-        newX < paddle.current.x + PADDLE_WIDTH
+        newX < paddle.current.x + PADDLE_WIDTH &&
+        newDy > 0
       ) {
         newDy = -newDy;
       }
