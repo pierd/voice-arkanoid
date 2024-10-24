@@ -1,74 +1,50 @@
 import { useEffect, useRef, useState } from "react";
 import { VoiceControl } from "./voiceControl";
 import { CANVAS_HEIGHT, CANVAS_WIDTH } from "./Arkanoid";
+import {
+  CalibrationResult,
+  CalibrationState,
+  calibrationStateArrayForStep,
+  CalibrationStep,
+  evaluateState,
+  isCalibrationStepComplete,
+} from "./calibrationTypes";
 
 const WARMUP_TIME = 5000;
 const CALIBRATION_TIME = 10000;
 const LOWEST_FREQ = 200;
 const BAR_HEIGHT_SCALE = CANVAS_HEIGHT / 300; // 256 is the max amplitude but we want some gap at the top
 
-export type CalibrationResult = {
-  minFreq: number;
-  maxFreq: number;
-  voiceAmplitude: number;
-  noiseAmplitude: number;
-  amplitudeThreshold: number;
-};
-
-export function isCalibrationResultComplete(result: CalibrationResult | null): result is CalibrationResult {
-  return result !== null && result.minFreq > 0 && result.maxFreq > 0 && result.voiceAmplitude > 0 && result.noiseAmplitude > 0 && result.amplitudeThreshold > 0;
-}
-
-type CalibrationState = {
-  freqs: number[];
-  voiceAmplitudes: number[];
-  noiseAmplitudes: number[];
-};
-
-function evaluateState(state: CalibrationState): CalibrationResult {
-  state.freqs.sort((a, b) => a - b);
-  state.voiceAmplitudes.sort((a, b) => a - b);
-  state.noiseAmplitudes.sort((a, b) => a - b);
-  const voiceAmplitude = state.voiceAmplitudes.length === 0 ? 0 : state.voiceAmplitudes[Math.floor(state.voiceAmplitudes.length / 2)];
-  const noiseAmplitude = state.noiseAmplitudes.length === 0 ? 0 : state.noiseAmplitudes[Math.floor(state.noiseAmplitudes.length / 2)];
-  return {
-    // p10 and p90
-    minFreq: state.freqs.length === 0 ? 0 : state.freqs[Math.floor(state.freqs.length * 0.1)],
-    maxFreq: state.freqs.length === 0 ? 0 : state.freqs[Math.floor(state.freqs.length * 0.9)],
-    // average of medians
-    amplitudeThreshold: (voiceAmplitude + noiseAmplitude) / 2,
-    voiceAmplitude,
-    noiseAmplitude,
-  }
-}
-
-type CalibrationStep = "voiceAmplitude" | "noiseAmplitude" | "frequencyRange";
-const CALIBRATION_STEPS: CalibrationStep[] = ["voiceAmplitude", "noiseAmplitude", "frequencyRange"];
+const CALIBRATION_STEPS: CalibrationStep[] = [
+  "voiceAmplitude",
+  "noiseAmplitude",
+  "frequencyRange",
+];
 const CALIBRATION_BUTTON: Record<CalibrationStep, string> = {
   voiceAmplitude: "Voice",
   noiseAmplitude: "Noise",
   frequencyRange: "Range",
 };
 const CALIBRATION_MESSAGE: Record<CalibrationStep, string> = {
-  voiceAmplitude: "Finding voice level. Make some noise. Whistling is recommended.",
+  voiceAmplitude:
+    "Finding voice level. Make some noise. Whistling is recommended.",
   noiseAmplitude: "Finding background noise level. Don't make any noise.",
-  frequencyRange: "Finding frequency range. Whistle away! Alternate from high to low pitch.",
+  frequencyRange:
+    "Finding frequency range. Whistle away! Alternate from high to low pitch.",
 };
 
 export function Calibration({
   voiceControl,
+  calibrationState,
   onCalibrated,
 }: {
   voiceControl: VoiceControl;
+  calibrationState: { current: CalibrationState };
   onCalibrated: (result: CalibrationResult) => void;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const state = useRef<CalibrationState>({
-    freqs: [],
-    voiceAmplitudes: [],
-    noiseAmplitudes: [],
-  });
-  const [calibrationStep, setCalibrationStep] = useState<CalibrationStep | null>(null);
+  const [calibrationStep, setCalibrationStep] =
+    useState<CalibrationStep | null>(null);
   const calibrationStartedAt = useRef<number | null>(null);
 
   useEffect(() => {
@@ -77,25 +53,29 @@ export function Calibration({
     const dataArray = voiceControl.prepareByteFrequencyArray();
     const canvas = canvasRef.current!;
     const ctx = canvas.getContext("2d")!;
-    const draw = (result: CalibrationResult | null, elapsedMs: number | null) => {
+    const draw = (
+      result: CalibrationResult | null,
+      elapsedMs: number | null,
+      usedValue: { frequency: number } | { amplitude: number } | undefined,
+    ) => {
       voiceControl.getByteFrequencyData(dataArray);
-      ctx.fillStyle = 'rgb(0, 0, 0)';
+      ctx.fillStyle = "rgb(0, 0, 0)";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
       const barWidth = (canvas.width / dataArray.length) * 2.5;
       let x = 0;
 
       for (let i = 0; i < dataArray.length; i++) {
-          const barHeight = dataArray[i] * BAR_HEIGHT_SCALE;
+        const barHeight = dataArray[i] * BAR_HEIGHT_SCALE;
 
-          const r = barHeight + 25 * (i / dataArray.length);
-          const g = 250 * (i / dataArray.length);
-          const b = 50;
+        const r = barHeight + 25 * (i / dataArray.length);
+        const g = 250 * (i / dataArray.length);
+        const b = 50;
 
-          ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
-          ctx.fillRect(x, canvas.height - barHeight, barWidth, barHeight);
+        ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+        ctx.fillRect(x, canvas.height - barHeight, barWidth, barHeight);
 
-          x += barWidth + 1;
+        x += barWidth + 1;
       }
 
       // Draw lines
@@ -108,7 +88,8 @@ export function Calibration({
         ctx.stroke();
       };
       const drawLineAtFrequency = (frequency: number, color: string) => {
-        const x = (frequency / voiceControl.frequencyPerDataPoint) * (barWidth + 1);
+        const x =
+          (frequency / voiceControl.frequencyPerDataPoint) * (barWidth + 1);
         ctx.beginPath();
         ctx.moveTo(x, 0);
         ctx.lineTo(x, canvas.height);
@@ -118,8 +99,16 @@ export function Calibration({
       if (result) {
         drawLineAtAmplitude(result.voiceAmplitude, "green");
         drawLineAtAmplitude(result.noiseAmplitude, "red");
+        drawLineAtAmplitude(result.amplitudeThreshold, "orange");
         drawLineAtFrequency(result.minFreq, "blue");
         drawLineAtFrequency(result.maxFreq, "blue");
+      }
+      if (usedValue) {
+        if ("amplitude" in usedValue) {
+          drawLineAtAmplitude(usedValue.amplitude, "white");
+        } else {
+          drawLineAtFrequency(usedValue.frequency, "white");
+        }
       }
 
       // Draw countdown
@@ -131,14 +120,22 @@ export function Calibration({
           ctx.fillText(`Get ready! ${Math.ceil(warmupLeft / 1000)}`, 8, 20);
         } else {
           const calibrationLeft = WARMUP_TIME + CALIBRATION_TIME - elapsedMs;
-          ctx.fillText(`Calibrating... ${Math.ceil(calibrationLeft / 1000)}`, 8, 20);
+          ctx.fillText(
+            `Calibrating... ${Math.ceil(calibrationLeft / 1000)}`,
+            8,
+            20
+          );
         }
       }
     };
 
-    let result: CalibrationResult = evaluateState(state.current);
+    let result: CalibrationResult = evaluateState(calibrationState.current);
     const calibrationLoop = () => {
-      const elapsed = calibrationStartedAt.current === null ? null : Date.now() - calibrationStartedAt.current;
+      let usedValue = undefined;
+      const elapsed =
+        calibrationStartedAt.current === null
+          ? null
+          : Date.now() - calibrationStartedAt.current;
       if (!elapsed) {
         // not calibrating - just draw
       } else if (elapsed < WARMUP_TIME) {
@@ -151,17 +148,27 @@ export function Calibration({
         calibrationStartedAt.current = null;
       } else {
         // actually calibrating
-        const { frequency, amplitude } = voiceControl.getMaxAmplitudeFreq(null, null);
+        const { frequency, amplitude } = voiceControl.getMaxAmplitudeFreq(
+          null,
+          null
+        );
         if (calibrationStep === "voiceAmplitude") {
-          state.current.voiceAmplitudes.push(amplitude);
+          calibrationState.current.voiceAmplitudes.push(amplitude);
+          usedValue = { amplitude };
         } else if (calibrationStep === "noiseAmplitude") {
-          state.current.noiseAmplitudes.push(amplitude);
-        } else if (calibrationStep === "frequencyRange" && amplitude > result.amplitudeThreshold && frequency > LOWEST_FREQ) {
-          state.current.freqs.push(frequency);
+          calibrationState.current.noiseAmplitudes.push(amplitude);
+          usedValue = { amplitude };
+        } else if (
+          calibrationStep === "frequencyRange" &&
+          amplitude > result.amplitudeThreshold &&
+          frequency > LOWEST_FREQ
+        ) {
+          calibrationState.current.freqs.push(frequency);
+          usedValue = { frequency };
         }
-        result = evaluateState(state.current);
+        result = evaluateState(calibrationState.current);
       }
-      draw(result, elapsed);
+      draw(result, elapsed, usedValue);
       animationFrameId = requestAnimationFrame(calibrationLoop);
     };
 
@@ -170,20 +177,16 @@ export function Calibration({
     return () => {
       cancelAnimationFrame(animationFrameId);
     };
-  }, [onCalibrated, voiceControl, calibrationStartedAt, calibrationStep]);
+  }, [
+    voiceControl,
+    calibrationState,
+    onCalibrated,
+    calibrationStartedAt,
+    calibrationStep,
+  ]);
 
   const startCalibration = (step: CalibrationStep) => {
-    switch (step) {
-      case "voiceAmplitude":
-        state.current.voiceAmplitudes = [];
-        break;
-      case "noiseAmplitude":
-        state.current.noiseAmplitudes = [];
-        break;
-      case "frequencyRange":
-        state.current.freqs = [];
-        break;
-    }
+    calibrationState.current[calibrationStateArrayForStep(step)] = [];
     setCalibrationStep(step);
     calibrationStartedAt.current = Date.now();
   };
@@ -191,18 +194,34 @@ export function Calibration({
   return (
     <div className="mt-4 space-y-2">
       <div className="flex flex-row">
-        {CALIBRATION_STEPS.map((step) => (
-        <button
-          key={step}
-          disabled={calibrationStep !== null}
-          onClick={() => startCalibration(step)}
-        >
-          {CALIBRATION_BUTTON[step]}
-        </button>
+        {CALIBRATION_STEPS.map((step, idx) => (
+          <button
+            key={step}
+            // Disable if calibration is in progress or if previous step is not complete
+            disabled={
+              calibrationStep !== null ||
+              (idx !== 0 &&
+                !isCalibrationStepComplete(
+                  calibrationState.current,
+                  CALIBRATION_STEPS[idx - 1]
+                ))
+            }
+            onClick={() => startCalibration(step)}
+          >
+            {`${
+              isCalibrationStepComplete(calibrationState.current, step)
+                ? "Recalibrate"
+                : "Calibrate"
+            } ${CALIBRATION_BUTTON[step]}`}
+          </button>
         ))}
       </div>
       <div>
-        <p>{calibrationStep === null ? '' : CALIBRATION_MESSAGE[calibrationStep]}</p>
+        <p>
+          {calibrationStep === null
+            ? "Not calibration in progress but you can test your whistling. Single sharp spike is good, multiple spikes or wider frequency range is bad."
+            : CALIBRATION_MESSAGE[calibrationStep]}
+        </p>
       </div>
       <canvas
         ref={canvasRef}
@@ -213,14 +232,3 @@ export function Calibration({
     </div>
   );
 }
-
-    //   <div>
-    //     <p>
-    //       {calibrationStep === "amplitudeThreshold"
-    //         ? "Finding noise level. Don't make any noise."
-    //         : "Finding frequency range. Make control noise. Alternate from high to low pitch."}
-    //     </p>
-    //     <p>Current noise level: {state.current.amplitudeThreshold}</p>
-    //     <p>Current min freq: {state.current.minFreq}</p>
-    //     <p>Current max freq: {state.current.maxFreq}</p>
-    //   </div>

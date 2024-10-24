@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef } from "react";
 import { VoiceControl } from "./voiceControl";
-import {
-  Calibration,
-  CalibrationResult,
-  isCalibrationResultComplete,
-} from "./Calibration";
+import { Calibration } from "./Calibration";
 import { Arkanoid } from "./Arkanoid";
+import {
+  CalibrationResult,
+  emptyCalibrationState,
+  isCalibrationResultComplete,
+} from "./calibrationTypes";
 
 type Mode = "welcome" | "game" | "calibrating" | "game-over";
 
@@ -13,6 +14,7 @@ function App() {
   const [mode, setMode] = useState<Mode>("welcome");
   const voiceControl = useRef<VoiceControl>();
   const [score, setScore] = useState(0);
+  const calibrationState = useRef(emptyCalibrationState());
   const [calibrationResult, setCalibrationResult] =
     useState<CalibrationResult | null>(null);
   const [, rerender] = useState({});
@@ -65,7 +67,10 @@ function App() {
             return (
               <div className="mt-4">
                 <p>Use your voice to control the paddle.</p>
-                <p>Whistle to move the paddle left or right.</p>
+                <p>
+                  Whistle at different pitch to move the paddle left (low pitch)
+                  or right (high pitch).
+                </p>
                 <p>Calibrate first, then start the game.</p>
               </div>
             );
@@ -90,6 +95,7 @@ function App() {
               voiceControl.current && (
                 <Calibration
                   voiceControl={voiceControl.current}
+                  calibrationState={calibrationState}
                   onCalibrated={setCalibrationResult}
                 />
               )
