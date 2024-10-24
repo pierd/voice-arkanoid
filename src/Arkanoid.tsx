@@ -56,12 +56,15 @@ export function Arkanoid({
     { x: number; y: number; status: number }[]
   >(generateBricks());
   const score = useRef(0);
+  const level = useRef(1);
 
   // Game loop
   useEffect(() => {
     const canvas = canvasRef.current;
     const ctx = canvas!.getContext("2d")!;
     let animationFrameId: number;
+
+    const paddleWidth = () => PADDLE_WIDTH / level.current;
 
     const updatePaddlePosition = () => {
       const { frequency: maxFrequency, amplitude: maxAmplitude } =
@@ -70,7 +73,7 @@ export function Arkanoid({
       if (maxAmplitude > amplitudeThreshold) {
         const normalizedPosition =
           (maxFrequency - minFreq) / (maxFreq - minFreq);
-        const newPaddleX = normalizedPosition * (CANVAS_WIDTH - PADDLE_WIDTH);
+        const newPaddleX = normalizedPosition * (CANVAS_WIDTH - paddleWidth());
         paddle.current.x = newPaddleX;
       }
     };
@@ -94,10 +97,15 @@ export function Arkanoid({
       if (
         newY + BALL_RADIUS > paddle.current.y &&
         newX > paddle.current.x &&
-        newX < paddle.current.x + PADDLE_WIDTH &&
+        newX < paddle.current.x + paddleWidth() &&
         newDy > 0
       ) {
         newDy = -newDy;
+        if (bricks.current.every((brick) => brick.status === 0)) {
+          // All bricks are destroyed -> next level
+          level.current += 1;
+          bricks.current = generateBricks();
+        }
       }
 
       // Game over
@@ -124,7 +132,7 @@ export function Arkanoid({
           ) {
             ball.current.dy = -ball.current.dy;
             brick.status = 0;
-            score.current += 1;
+            score.current += 1 << (level.current - 1);
             collided = true;
           }
         }
@@ -141,7 +149,7 @@ export function Arkanoid({
       ctx.fillRect(
         paddle.current.x,
         paddle.current.y,
-        PADDLE_WIDTH,
+        paddleWidth(),
         PADDLE_HEIGHT
       );
 
