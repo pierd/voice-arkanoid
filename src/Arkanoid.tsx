@@ -12,7 +12,9 @@ const BRICK_WIDTH = CANVAS_WIDTH / 10;
 const BRICK_HEIGHT = CANVAS_HEIGHT / 30;
 const BRICK_PADDING = PADDLE_HEIGHT;
 const BRICK_OFFSET_TOP = BRICK_PADDING;
-const BRICK_OFFSET_LEFT = CANVAS_WIDTH - BRICK_COLUMNS * (BRICK_WIDTH + BRICK_PADDING);
+const BRICK_OFFSET_LEFT =
+  CANVAS_WIDTH - BRICK_COLUMNS * (BRICK_WIDTH + BRICK_PADDING);
+const BALL_ANGLE_ADJUSTMENT = Math.PI / 4;
 
 export function Arkanoid({
   minFreq,
@@ -52,9 +54,9 @@ export function Arkanoid({
     }
     return newBricks;
   };
-  const bricks = useRef<
-    { x: number; y: number; status: number }[]
-  >(generateBricks());
+  const bricks = useRef<{ x: number; y: number; status: number }[]>(
+    generateBricks()
+  );
   const score = useRef(0);
   const level = useRef(1);
 
@@ -101,6 +103,12 @@ export function Arkanoid({
         newDy > 0
       ) {
         newDy = -newDy;
+        const ballSpeed = Math.sqrt(newDx ** 2 + newDy ** 2);
+        const paddleRatio = (newX - paddle.current.x) / paddleWidth() - 0.5; // -0.5 to 0.5
+        const ballVAngle =
+          Math.atan2(newDy, newDx) + paddleRatio * BALL_ANGLE_ADJUSTMENT;
+        newDx = Math.cos(ballVAngle) * ballSpeed;
+        newDy = Math.sin(ballVAngle) * ballSpeed;
         if (bricks.current.every((brick) => brick.status === 0)) {
           // All bricks are destroyed -> next level
           level.current += 1;
