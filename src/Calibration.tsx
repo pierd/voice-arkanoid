@@ -219,7 +219,7 @@ export function Calibration({
       <div>
         <p>
           {calibrationStep === null
-            ? "Not calibration in progress but you can test your whistling. Single sharp spike is good, multiple spikes or wider frequency range is bad."
+            ? "No calibration in progress but you can test your whistling. Single sharp spike is good, multiple spikes or wider frequency range is bad."
             : CALIBRATION_MESSAGE[calibrationStep]}
         </p>
       </div>
