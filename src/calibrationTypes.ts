@@ -19,7 +19,6 @@ export function isCalibrationResultComplete(
     result.minFreq > 0 &&
     result.maxFreq > 0 &&
     result.voiceAmplitude > 0 &&
-    result.noiseAmplitude > 0 &&
     result.amplitudeThreshold > 0
   );
 }
